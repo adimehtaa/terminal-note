@@ -4,12 +4,18 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
+var (
+	cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+)
+
 type model struct {
-	msg string
+	newFileInput           textinput.Model
+	createFileInputVisible bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -17,6 +23,7 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
@@ -25,10 +32,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+c", "q":
 			return m, tea.Quit
+
+		case "ctrl+n":
+			m.createFileInputVisible = true
+			return m, nil
 		}
 	}
 
-	return m, nil
+	if m.createFileInputVisible {
+		m.newFileInput, cmd = m.newFileInput.Update(msg)
+	}
+
+	return m, cmd
 }
 
 func (m model) View() string {
@@ -52,13 +67,27 @@ func (m model) View() string {
 	help := styleHelp.Render("Ctrl+N: new file · Ctrl+L: list · Esc: back/save · Ctrl+S: save · Ctrl+Q: quit")
 
 	view := ""
+	if m.createFileInputVisible {
+		view = m.newFileInput.View()
+	}
 
 	return fmt.Sprintf("\n%s\n\n%s\n\n%s\n", welcome, view, help)
 }
 
 func initialModel() model {
+
+	ti := textinput.New()
+	ti.Placeholder = "Create Your Notes"
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 20
+	ti.Cursor.Style = cursorStyle
+	ti.PromptStyle = cursorStyle
+	ti.TextStyle = cursorStyle
+
 	return model{
-		msg: "hhllh",
+		newFileInput:           ti,
+		createFileInputVisible: false,
 	}
 }
 

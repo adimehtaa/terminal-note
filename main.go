@@ -84,6 +84,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
+			if m.currentFile != nil {
+				break
+			}
+
 			if m.createFileInputVisible {
 				filename := m.newFileInput.Value()
 				if filename != "" {

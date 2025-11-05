@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -11,7 +12,17 @@ import (
 
 var (
 	cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	vaultDir    string
 )
+
+func init() {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal("Error Getting Home directory.", err)
+	}
+
+	vaultDir = fmt.Sprint("%s/.terminal-note", homeDir)
+}
 
 type model struct {
 	newFileInput           textinput.Model
@@ -35,6 +46,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+n":
 			m.createFileInputVisible = true
+			return m, nil
+
+		case "enter":
 			return m, nil
 		}
 	}
@@ -76,6 +90,11 @@ func (m model) View() string {
 
 func initialModel() model {
 
+	err := os.MkdirAll(vaultDir, 0750)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	ti := textinput.New()
 	ti.Placeholder = "Create Your Notes"
 	ti.Focus()
@@ -93,6 +112,7 @@ func initialModel() model {
 
 func main() {
 	p := tea.NewProgram(initialModel())
+
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)

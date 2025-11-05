@@ -27,6 +27,7 @@ func init() {
 type model struct {
 	newFileInput           textinput.Model
 	createFileInputVisible bool
+	currentFile            *os.File
 }
 
 func (m model) Init() tea.Cmd {
@@ -49,6 +50,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
+			filename := m.newFileInput.Value()
+
+			if filename != "" {
+				filepath := fmt.Sprintf("%s/%s.md", vaultDir, filename)
+				if _, err := os.Stat(filepath); err == nil {
+					return m, nil
+				}
+
+				file, err := os.Create(filepath)
+				if err != nil {
+					log.Fatalf("%v", err)
+				}
+
+				m.currentFile = file
+				m.createFileInputVisible = false
+				m.newFileInput.SetValue("")
+
+			}
+
 			return m, nil
 		}
 	}

@@ -53,6 +53,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.createFileInputVisible = true
 			return m, nil
 
+		case "ctrl+s":
+
+			if m.currentFile == nil {
+				break
+			}
+
+			if err := m.currentFile.Truncate(0); err != nil {
+				fmt.Println("Can not save the file :( ")
+				return m, nil
+			}
+
+			if _, err := m.currentFile.Seek(0, 0); err != nil {
+				fmt.Println("Can not save the file :( ")
+				return m, nil
+			}
+
+			if _, err := m.currentFile.WriteString(m.noteTextArea.Value()); err != nil {
+				fmt.Println("Can not save the file :( ")
+				return m, nil
+			}
+
+			if err := m.currentFile.Close(); err != nil {
+				fmt.Println("can not close the file.")
+			}
+
+			m.currentFile = nil
+			m.noteTextArea.SetValue("")
+
+			return m, nil
+
 		case "enter":
 			if m.createFileInputVisible {
 				filename := m.newFileInput.Value()

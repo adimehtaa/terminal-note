@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
+	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -21,13 +23,15 @@ func init() {
 		log.Fatal("Error Getting Home directory.", err)
 	}
 
-	vaultDir = fmt.Sprint("%s/.terminal-note", homeDir)
+	vaultDir = fmt.Sprintf("%s/.terminal-note", homeDir)
 }
 
 type model struct {
 	newFileInput           textinput.Model
 	createFileInputVisible bool
 	currentFile            *os.File
+	noteTextArea           textarea.Model
+	statusMsg              string
 }
 
 func (m model) Init() tea.Cmd {
@@ -50,23 +54,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "enter":
-			filename := m.newFileInput.Value()
+			if m.createFileInputVisible {
+				filename := m.newFileInput.Value()
+				if filename != "" {
+					filepath := filepath.Join(vaultDir, fmt.Sprintf("%s.md", filename))
 
-			if filename != "" {
-				filepath := fmt.Sprintf("%s/%s.md", vaultDir, filename)
-				if _, err := os.Stat(filepath); err == nil {
-					return m, nil
+					if _, err := os.Stat(filepath); err == nil {
+						// File exists — show user feedback
+						m.statusMsg = fmt.Sprintf("⚠️ File '%s.md' already exists!", filename)
+						return m, nil
+					}
+
+					file, err := os.Create(filepath)
+					if err != nil {
+						m.statusMsg = fmt.Sprintf("❌ Error creating file: %v", err)
+						return m, nil
+					}
+
+					m.currentFile = file
+					m.createFileInputVisible = false
+					m.newFileInput.SetValue("")
+					m.statusMsg = fmt.Sprintf("✅ Created new note: %s.md", filename)
 				}
-
-				file, err := os.Create(filepath)
-				if err != nil {
-					log.Fatalf("%v", err)
-				}
-
-				m.currentFile = file
-				m.createFileInputVisible = false
-				m.newFileInput.SetValue("")
-
 			}
 
 			return m, nil
@@ -77,35 +86,47 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.newFileInput, cmd = m.newFileInput.Update(msg)
 	}
 
+	if m.currentFile != nil {
+		m.noteTextArea, cmd = m.noteTextArea.Update(msg)
+	}
+
 	return m, cmd
 }
 
 func (m model) View() string {
-
-	var style = lipgloss.NewStyle().
+	welcome := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("16")).
 		Background(lipgloss.Color("205")).
 		PaddingLeft(2).
-		PaddingRight(2)
+		PaddingRight(2).
+		Render("welcome to terminal-note 🧠")
 
-	welcome := style.Render("welcome to terminal-note 🧠")
-
-	var styleHelp = lipgloss.NewStyle().
+	help := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("16")).
 		Background(lipgloss.Color("7")).
 		PaddingLeft(2).
-		PaddingRight(2)
+		PaddingRight(2).
+		Render("Ctrl+N: new file · Ctrl+L: list · Esc: back/save · Ctrl+S: save · Ctrl+Q: quit")
 
-	help := styleHelp.Render("Ctrl+N: new file · Ctrl+L: list · Esc: back/save · Ctrl+S: save · Ctrl+Q: quit")
-
-	view := ""
+	content := ""
 	if m.createFileInputVisible {
-		view = m.newFileInput.View()
+		content = m.newFileInput.View()
+	} else if m.currentFile != nil {
+		content = m.noteTextArea.View()
 	}
 
-	return fmt.Sprintf("\n%s\n\n%s\n\n%s\n", welcome, view, help)
+	statusStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("10")).
+		Bold(true)
+
+	status := ""
+	if m.statusMsg != "" {
+		status = statusStyle.Render(m.statusMsg)
+	}
+
+	return fmt.Sprintf("\n%s\n\n%s\n\n%s\n\n%s\n", welcome, content, help, status)
 }
 
 func initialModel() model {
@@ -124,9 +145,16 @@ func initialModel() model {
 	ti.PromptStyle = cursorStyle
 	ti.TextStyle = cursorStyle
 
+	//input noteTextArea
+	ta := textarea.New()
+	ta.Placeholder = "write your note"
+	ta.Focus()
+	ta.ShowLineNumbers = false
+
 	return model{
 		newFileInput:           ti,
 		createFileInputVisible: false,
+		noteTextArea:           ta,
 	}
 }
 

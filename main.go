@@ -65,6 +65,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 
+		case "esc":
+			if m.createFileInputVisible {
+				m.createFileInputVisible = false
+			}
+
+			if m.currentFile != nil {
+				m.currentFile = nil
+			}
+
+			if m.showingList {
+				if m.list.FilterState() == list.Filtering {
+					break
+				}
+				m.showingList = false
+			}
+			return m, nil
+
 		case "ctrl+n":
 			m.createFileInputVisible = true
 			return m, nil
@@ -192,7 +209,7 @@ func (m model) View() string {
 		Background(lipgloss.Color("7")).
 		PaddingLeft(2).
 		PaddingRight(2).
-		Render("Ctrl+N: new file • Ctrl+L: list • Esc: back/save • Ctrl+S: save • Ctrl+Q: quit")
+		Render("Ctrl+N: new file • Ctrl+L: list • Esc: back • Ctrl+S: save • Ctrl+Q: quit")
 
 	content := ""
 	if m.createFileInputVisible {

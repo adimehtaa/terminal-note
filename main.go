@@ -70,6 +70,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "ctrl+l":
+			noteList := listFile()
+			m.list.SetItems(noteList)
 			m.showingList = true
 			return m, nil
 

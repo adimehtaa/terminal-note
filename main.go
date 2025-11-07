@@ -43,6 +43,7 @@ type model struct {
 	noteTextArea           textarea.Model
 	statusMsg              string
 	list                   list.Model
+	showingList            bool
 }
 
 func (m model) Init() tea.Cmd {
@@ -66,6 +67,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+n":
 			m.createFileInputVisible = true
+			return m, nil
+
+		case "ctrl+l":
+			m.showingList = true
 			return m, nil
 
 		case "ctrl+s":
@@ -139,6 +144,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.noteTextArea, cmd = m.noteTextArea.Update(msg)
 	}
 
+	if m.showingList {
+		m.list, cmd = m.list.Update(msg)
+	}
+
 	return m, cmd
 }
 
@@ -157,13 +166,15 @@ func (m model) View() string {
 		Background(lipgloss.Color("7")).
 		PaddingLeft(2).
 		PaddingRight(2).
-		Render("Ctrl+N: new file · Ctrl+L: list · Esc: back/save · Ctrl+S: save · Ctrl+Q: quit")
+		Render("Ctrl+N: new file • Ctrl+L: list • Esc: back/save • Ctrl+S: save • Ctrl+Q: quit")
 
 	content := ""
 	if m.createFileInputVisible {
 		content = m.newFileInput.View()
 	} else if m.currentFile != nil {
 		content = m.noteTextArea.View()
+	} else if m.showingList {
+		content = m.list.View()
 	}
 
 	statusStyle := lipgloss.NewStyle().
@@ -200,10 +211,17 @@ func initialModel() model {
 	ta.Focus()
 	ta.ShowLineNumbers = false
 
+	//list
+	noteList := listFile()
+	finalList := list.New(noteList, list.NewDefaultDelegate(), 0, 0)
+	finalList.Title = "All Notes"
+	finalList.Styles.Title = lipgloss.NewStyle().Foreground(lipgloss.Color("16")).Background(lipgloss.Color("254")).Padding(0, 1)
+
 	return model{
 		newFileInput:           ti,
 		createFileInputVisible: false,
 		noteTextArea:           ta,
+		list:                   finalList,
 	}
 }
 

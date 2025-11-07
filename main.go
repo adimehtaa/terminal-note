@@ -71,6 +71,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if m.currentFile != nil {
+				m.noteTextArea.SetValue("")
 				m.currentFile = nil
 			}
 

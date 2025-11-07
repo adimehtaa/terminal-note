@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,6 +16,7 @@ import (
 var (
 	cursorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
 	vaultDir    string
+	docStyle    = lipgloss.NewStyle().Margin(1, 2)
 )
 
 func init() {
@@ -26,12 +28,21 @@ func init() {
 	vaultDir = fmt.Sprintf("%s/.terminal-note", homeDir)
 }
 
+type item struct {
+	title, desc string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.desc }
+func (i item) FilterValue() string { return i.title }
+
 type model struct {
 	newFileInput           textinput.Model
 	createFileInputVisible bool
 	currentFile            *os.File
 	noteTextArea           textarea.Model
 	statusMsg              string
+	list                   list.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -41,6 +52,10 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		h, v := docStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
 
 	case tea.KeyMsg:
 
@@ -199,4 +214,32 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
+}
+
+func listFile() []list.Item {
+	items := make([]list.Item, 0)
+
+	entries, err := os.ReadDir(vaultDir)
+	if err != nil {
+		log.Fatal("Error Reading notes")
+	}
+
+	for _, entry := range entries {
+
+		if !entry.IsDir() {
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+
+			modTime := info.ModTime().Format("2005-01-02 15:04")
+
+			items = append(items, item{
+				title: entry.Name(),
+				desc:  fmt.Sprintf("Modified: %s", modTime),
+			})
+		}
+	}
+
+	return items
 }

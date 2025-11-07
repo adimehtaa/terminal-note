@@ -108,6 +108,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				break
 			}
 
+			if m.showingList {
+				selectedItem, ok := m.list.SelectedItem().(item)
+				if ok {
+					filepath := fmt.Sprintf("%s/%s", vaultDir, selectedItem.title)
+					content, err := os.ReadFile(filepath)
+					if err != nil {
+						log.Printf("Error while reading file %v", err)
+						return m, nil
+					}
+
+					m.noteTextArea.SetValue(string(content))
+
+					file, err := os.OpenFile(filepath, os.O_RDWR, 0644)
+					if err != nil {
+						log.Printf("Error while reading file %v", err)
+						return m, nil
+					}
+
+					m.currentFile = file
+					m.showingList = false
+				}
+				return m, nil
+			}
+
 			if m.createFileInputVisible {
 				filename := m.newFileInput.Value()
 				if filename != "" {
